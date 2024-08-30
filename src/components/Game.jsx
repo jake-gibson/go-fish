@@ -2,44 +2,94 @@ import React, { useEffect, useState } from 'react';
 
 //React Components for UI
 import Deck from './Deck';
-import Player from './Player';
+import NPC from './Players/NPC';
+import User from './Players/User';
 
 //Controller functions for game logic:
-import deckController from '../utilities/deckController';
 import gameController from '../utilities/gameController';
+import deckController from '../utilities/deckController';
+const { dealCards } = gameController;
+const { newDeck, shuffle } = deckController;
 
 const Game = () => {
   //Card Locations:
   const [currentDeck, setCurrentDeck] = useState([]);
-  const [playerHand, setPlayerHand] = useState([]);
+  const [userHand, setUserHand] = useState([]);
   const [NPCHand, setNPCHand] = useState([]);
 
   //Rounds of the Game:
-  const [isPlayersTurn, setIsPlayersTurn] = useState(true);
+  const [isUsersTurn, setIsUsersTurn] = useState(true);
 
   useEffect(() => {
-    const deck = deckController.newDeck();
-    const shuffledDeck = deckController.shuffle(deck);
+    const deck = shuffle(newDeck());
 
     // //Generate two hands of 7 cards by removing from the deck
-    const { hand1, hand2 } = gameController.dealCards(shuffledDeck);
+    const { hand1, hand2 } = dealCards(deck);
 
-    setPlayerHand(hand1);
+    setUserHand(hand1);
     setNPCHand(hand2);
-    setCurrentDeck(shuffledDeck);
+    setCurrentDeck(deck);
   }, []);
 
   // useEffect(() => {
   //  deckController.sortHand(); //make sure visually cards in order
   //   gameController.checkWin();
-  // }, [playerHand, NPCHand]);
+  // }, [userHand, NPCHand]);
+
+  const askForCard = (sourcePlayer, targetPlayer, desiredValue) => {
+    //issue is the automated NPC is asking for two cards
+    alert(`${sourcePlayer} asks for ${desiredValue}`);
+    setIsUsersTurn(!isUsersTurn);
+
+    const roleToPlayer = {
+      User: [userHand, setUserHand],
+      NPC: [NPCHand, setNPCHand],
+    };
+
+    const targetHand = roleToPlayer[targetPlayer][0];
+    const sourceHand = roleToPlayer[sourcePlayer][0];
+    const targetHandSetter = roleToPlayer[targetPlayer][1];
+    const sourceHandSetter = roleToPlayer[sourcePlayer][1];
+
+    const removedCards = [];
+    const newHand = [];
+
+    for (let card of targetHand) {
+      card.value === desiredValue
+        ? removedCards.push(card)
+        : newHand.push(card);
+    }
+
+    sourceHand.push(...removedCards);
+    sourceHandSetter(sourceHand);
+    targetHandSetter(newHand);
+  };
+
+  const toggleUsersTurn = () => {
+    setIsUsersTurn(!isUsersTurn);
+  };
 
   return (
-    <div>
-      <h1>Game</h1>
-      <Player role="NPC" hand={NPCHand} />
-      <Deck currentDeck={currentDeck} />
-      <Player role="User" hand={playerHand} />
+    <div className="game">
+      {/* <h1>Game</h1> */}
+      <NPC
+        role="NPC"
+        hand={NPCHand}
+        askForCard={askForCard}
+        isUsersTurn={isUsersTurn}
+        toggleUsersTurn={toggleUsersTurn}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+        <p>It's {isUsersTurn ? 'User' : 'NPC'}'s turn</p>
+        <Deck currentDeck={currentDeck} />
+      </div>
+      <User
+        role="User"
+        hand={userHand}
+        askForCard={askForCard}
+        isUsersTurn={isUsersTurn}
+        toggleUsersTurn={toggleUsersTurn}
+      />
     </div>
   );
 };
