@@ -11,7 +11,9 @@ const App = () => {
       {gameInPlay ? (
         <Game />
       ) : (
-        <button onClick={() => setGameInPlay(true)}>New Game</button>
+        <button id="new-game" onClick={() => setGameInPlay(true)}>
+          New Game
+        </button>
       )}
     </div>
   );

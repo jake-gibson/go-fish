@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 //React Components for UI
-import Deck from './Deck';
 import NPC from './Players/NPC';
 import User from './Players/User';
+import Controls from './Controls';
 
 //Controller functions for game logic:
 import gameController from '../utilities/gameController';
 import deckController from '../utilities/deckController';
-const { dealCards } = gameController;
+const { dealCards, parseHand, sortHand } = gameController;
 const { newDeck, shuffle } = deckController;
 
 const Game = () => {
@@ -16,79 +16,112 @@ const Game = () => {
   const [currentDeck, setCurrentDeck] = useState([]);
   const [userHand, setUserHand] = useState([]);
   const [NPCHand, setNPCHand] = useState([]);
+  const askedCard = useRef(null);
 
   //Rounds of the Game:
   const [isUsersTurn, setIsUsersTurn] = useState(true);
+  const [NPCIsAsking, setNPCIsAsking] = useState(false);
+  const [goFishIsDone, setGoFishIsDone] = useState(false);
 
+  //Game Message:
+  const [message, setMessage] = useState('Click a card to get started');
+
+  //New Game Begins:
   useEffect(() => {
     const deck = shuffle(newDeck());
-
-    // //Generate two hands of 7 cards by removing from the deck
     const { hand1, hand2 } = dealCards(deck);
 
-    setUserHand(hand1);
-    setNPCHand(hand2);
+    setUserHand(sortHand(hand1));
+    setNPCHand(sortHand(hand2));
     setCurrentDeck(deck);
   }, []);
 
-  // useEffect(() => {
-  //  deckController.sortHand(); //make sure visually cards in order
-  //   gameController.checkWin();
-  // }, [userHand, NPCHand]);
+  //When turn changes, NPC asks for a card
+  useEffect(() => {
+    if (!isUsersTurn) {
+      console.log('in NPC use effect');
+      setMessage('NPC is thinking');
+      setTimeout(() => NPCAsk(), 3000);
+    }
+  }, [isUsersTurn]);
+
+  const NPCAsk = () => {
+    const randomIndex = Math.floor(Math.random() * NPCHand.length);
+    const randomCard = NPCHand[randomIndex];
+    askedCard.current = randomCard.value;
+    setMessage(`NPC is asking for ${randomCard.value}`);
+    setNPCIsAsking(true);
+  };
+
+  const roleToPlayer = {
+    User: [userHand, setUserHand],
+    NPC: [NPCHand, setNPCHand],
+  };
 
   const askForCard = (sourcePlayer, targetPlayer, desiredValue) => {
-    //issue is the automated NPC is asking for two cards
-    alert(`${sourcePlayer} asks for ${desiredValue}`);
-    setIsUsersTurn(!isUsersTurn);
+    const [targetHand, targetHandSetter] = roleToPlayer[targetPlayer];
+    const [sourceHand, sourceHandSetter] = roleToPlayer[sourcePlayer];
 
-    const roleToPlayer = {
-      User: [userHand, setUserHand],
-      NPC: [NPCHand, setNPCHand],
-    };
+    const { removedCards, newHand } = parseHand(targetHand, desiredValue);
 
-    const targetHand = roleToPlayer[targetPlayer][0];
-    const sourceHand = roleToPlayer[sourcePlayer][0];
-    const targetHandSetter = roleToPlayer[targetPlayer][1];
-    const sourceHandSetter = roleToPlayer[sourcePlayer][1];
-
-    const removedCards = [];
-    const newHand = [];
-
-    for (let card of targetHand) {
-      card.value === desiredValue
-        ? removedCards.push(card)
-        : newHand.push(card);
+    if (removedCards.length === 0) {
+      setMessage(`${targetPlayer} has no ${desiredValue}s. Go Fish!`);
+      return;
     }
 
+    //Sets new hands
     sourceHand.push(...removedCards);
-    sourceHandSetter(sourceHand);
-    targetHandSetter(newHand);
+    sourceHandSetter(sortHand(sourceHand));
+    targetHandSetter(sortHand(newHand));
+
+    //Dynamic Dialogue
+    setMessage(
+      `${targetPlayer} gave up (${removedCards.length}) ${desiredValue}s. Ask for More!`
+    );
+    setNPCIsAsking(false);
+
+    //NPC will ask again
+    if (sourcePlayer === 'NPC') setTimeout(() => NPCAsk(), 2000);
   };
 
   const toggleUsersTurn = () => {
     setIsUsersTurn(!isUsersTurn);
+    setGoFishIsDone(false);
+  };
+
+  const pullFromDeck = (sourcePlayer) => {
+    const [sourceHand, sourceHandSetter] = roleToPlayer[sourcePlayer];
+    const topCard = currentDeck.pop();
+    sourceHand.push(topCard);
+
+    sourceHandSetter(sortHand(sourceHand));
+    setCurrentDeck(currentDeck);
+
+    setMessage(`${sourcePlayer} went fishing...`);
+    setNPCIsAsking(false);
+    setGoFishIsDone(true);
+
+    toggleUsersTurn();
   };
 
   return (
     <div className="game">
-      {/* <h1>Game</h1> */}
-      <NPC
-        role="NPC"
-        hand={NPCHand}
-        askForCard={askForCard}
-        isUsersTurn={isUsersTurn}
+      <NPC role="NPC" hand={NPCHand} isUsersTurn={isUsersTurn} />
+      <Controls
+        goFishIsDone={goFishIsDone}
         toggleUsersTurn={toggleUsersTurn}
+        isUsersTurn={isUsersTurn}
+        message={message}
+        pullFromDeck={pullFromDeck}
+        NPCIsAsking={NPCIsAsking}
+        askForCard={askForCard}
+        askedCard={askedCard}
       />
-      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-        <p>It's {isUsersTurn ? 'User' : 'NPC'}'s turn</p>
-        <Deck currentDeck={currentDeck} />
-      </div>
       <User
         role="User"
         hand={userHand}
         askForCard={askForCard}
         isUsersTurn={isUsersTurn}
-        toggleUsersTurn={toggleUsersTurn}
       />
     </div>
   );

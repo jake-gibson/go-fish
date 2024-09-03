@@ -1,9 +1,11 @@
-import React from 'react'
+import React from 'react';
 
-const Deck = () => {
+const Deck = ({ pullFromDeck }) => {
   return (
-    <div>Deck</div>
-  )
-}
+    <div className="back" onClick={() => pullFromDeck('User')}>
+      Deck
+    </div>
+  );
+};
 
-export default Deck
+export default Deck;

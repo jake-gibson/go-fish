@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Hand from '../Hand';
 
-const NPC = ({ role, hand, askForCard, isUsersTurn, toggleUsersTurn }) => {
-  if (!isUsersTurn) {
-    const randomIndex = Math.floor(Math.random() * hand.length);
-    const randomCard = hand[randomIndex];
-
-    // toggleUsersTurn();
-    setTimeout(() => askForCard('NPC', 'User', randomCard.value), 1000);
-  }
-
+const NPC = ({ role, hand, isUsersTurn }) => {
   const selectCard = (value) => {
     console.log('Not your card!');
   };
 
   return (
-    <div>
-      <h3>My role is: {role}</h3>
-      <Hand hand={hand} selectCard={selectCard} />
+    <div
+      className="player"
+      style={{
+        border: `3px solid ${isUsersTurn ? 'transparent' : '#B21807'}`,
+        boxShadow: `${
+          !isUsersTurn ? '0 0 5px .5px #B21807' : '0 0 10px 5px transparent'
+        }`,
+      }}
+    >
+      <h3>{role}</h3>
+      <p>Card count: {hand.length}</p>
+      <Hand role={role} hand={hand} selectCard={selectCard} />
     </div>
   );
 };
